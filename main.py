@@ -59,7 +59,10 @@ DAX_STOCKS = [
     {"symbol": "ZAL.DE",   "name": "Zalando SE",          "sector": "Consumer"},
     {"symbol": "HEI.DE",   "name": "HeidelbergMaterials", "sector": "Materials"},
 ]
-
+def clean(v):
+    if v is None: return None
+    try: return None if (isinstance(v, float) and (v != v or v == float('inf') or v == float('-inf'))) else v
+    except: return None
 def calc_rsi(closes, period=14):
     delta = closes.diff()
     gain  = delta.clip(lower=0).rolling(period).mean()
@@ -125,7 +128,7 @@ def calc_price_levels(df, price, bb_upper, bb_mid, bb_lower, sma50, atr_val):
         "stop_loss": stop_loss, "target1": target1, "target2": target2, "target3": target3,
         "buy_zone_low": round(bb_lower * 0.99, 2) if bb_lower else round(price * 0.97, 2),
         "buy_zone_high": round(bb_lower * 1.01, 2) if bb_lower else round(price * 1.01, 2),
-        "risk_reward": rr,
+        "risk_reward": 0 if (rr is None or (isinstance(rr, float) and (rr != rr))) else rr,
         "risk_pct": round((price - stop_loss) / price * 100, 2),
         "reward_pct": round((target2 - price) / price * 100, 2),
     }
@@ -271,7 +274,7 @@ async def get_stock_detail(symbol:str,background_tasks:BackgroundTasks):
         rsi_s=calc_rsi(closes); macd_s,sig_s,hist_s=calc_macd(closes)
         bb_u,bb_m,bb_l=calc_bollinger(closes)
         sma20=closes.rolling(20).mean(); sma50=closes.rolling(50).mean(); ema9=closes.ewm(span=9,adjust=False).mean()
-        def to_list(s): return [round(float(v),4) if not pd.isna(v) else None for v in s]
+        def to_list(s): return [round(float(v),4) if (v is not None and not pd.isna(v)) else None for v in s]
         ohlcv=[{"date":str(i.date()),"open":round(float(r["Open"]),2),"high":round(float(r["High"]),2),
                 "low":round(float(r["Low"]),2),"close":round(float(r["Close"]),2),"volume":int(r["Volume"])} for i,r in df.iterrows()]
         indicators={"rsi":to_list(rsi_s),"macd":to_list(macd_s),"macd_signal":to_list(sig_s),"macd_hist":to_list(hist_s),
